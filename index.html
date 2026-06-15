@@ -967,7 +967,7 @@
         <!-- 粽子小游戏 -->
         <div class="game-section">
             <div class="game-title">🎮 粽子接接乐</div>
-            <div class="game-desc">用鼠标左右移动接住粽子，看你能接多少个！</div>
+            <div class="game-desc">用鼠标/手指左右移动，接住掉落的粽子和道具，躲开炸弹！<br>🫔粽子🍃粽叶🎋竹子(1分) | 🍶雄黄酒🌿艾草🎏鲤鱼旗(2分) | 🧧红包(3分) | 💣炸弹(-1分)</div>
             <div class="game-container" id="gameContainer">
                 <canvas id="gameCanvas" width="400" height="500"></canvas>
                 <div class="game-overlay" id="gameOverlay">
@@ -1439,13 +1439,24 @@
         }
 
         function createZongzi() {
-            const emojis = ['🫔', '🍃', '🎋'];
+            const items = [
+                { emoji: '🫔', name: '粽子', points: 1 },
+                { emoji: '🍃', name: '粽叶', points: 1 },
+                { emoji: '🎋', name: '竹子', points: 1 },
+                { emoji: '🍶', name: '雄黄酒', points: 2 },
+                { emoji: '🌿', name: '艾草', points: 2 },
+                { emoji: '🧧', name: '红包', points: 3 },
+                { emoji: '🎏', name: '鲤鱼旗', points: 2 }
+            ];
+            const item = items[Math.floor(Math.random() * items.length)];
             zongzis.push({
                 x: Math.random() * (canvas.width - 45),
                 y: -45,
                 size: 45,
                 speed: Math.random() * 1.5 + 1,
-                emoji: emojis[Math.floor(Math.random() * emojis.length)]
+                emoji: item.emoji,
+                name: item.name,
+                points: item.points
             });
         }
 
@@ -1506,7 +1517,7 @@
         }
 
         function updateGame() {
-            // 移动粽子
+            // 移动粽子/道具
             zongzis.forEach((z, index) => {
                 z.y += z.speed;
 
@@ -1514,8 +1525,10 @@
                 if (z.y + z.size > player.y &&
                     z.x + z.size > player.x &&
                     z.x < player.x + player.width) {
-                    gameScore++;
+                    gameScore += z.points;
                     document.getElementById('gameScore').textContent = gameScore;
+                    // 接到道具特效
+                    createCatchEffect(z.x + z.size / 2, z.y + z.size / 2, z.emoji);
                     zongzis.splice(index, 1);
                 }
 
@@ -1558,34 +1571,131 @@
         }
 
         function createExplosion(x, y) {
-            // 简单的爆炸粒子效果
-            for (let i = 0; i < 10; i++) {
+            const canvasRect = canvas.getBoundingClientRect();
+            const colors = ['#ff4444', '#ff8800', '#ffcc00', '#ff6600', '#ff0000'];
+            const particleCount = 30;
+
+            // 创建爆炸中心闪光
+            const flash = document.createElement('div');
+            flash.style.cssText = `
+                position: fixed;
+                width: 80px;
+                height: 80px;
+                background: radial-gradient(circle, rgba(255,255,0,0.9), rgba(255,100,0,0.6), transparent);
+                border-radius: 50%;
+                left: ${canvasRect.left + x - 40}px;
+                top: ${canvasRect.top + y - 40}px;
+                z-index: 100;
+                pointer-events: none;
+            `;
+            document.body.appendChild(flash);
+            flash.animate([
+                { transform: 'scale(0)', opacity: 1 },
+                { transform: 'scale(2)', opacity: 0 }
+            ], { duration: 400, easing: 'ease-out' }).onfinish = () => flash.remove();
+
+            // 创建爆炸粒子
+            for (let i = 0; i < particleCount; i++) {
                 const particle = document.createElement('div');
+                const size = Math.random() * 8 + 4;
+                const color = colors[Math.floor(Math.random() * colors.length)];
                 particle.style.cssText = `
                     position: fixed;
-                    width: 8px;
-                    height: 8px;
-                    background: #ff4444;
+                    width: ${size}px;
+                    height: ${size}px;
+                    background: ${color};
                     border-radius: 50%;
-                    left: ${canvas.getBoundingClientRect().left + x}px;
-                    top: ${canvas.getBoundingClientRect().top + y}px;
+                    box-shadow: 0 0 ${size}px ${color};
+                    left: ${canvasRect.left + x}px;
+                    top: ${canvasRect.top + y}px;
                     z-index: 100;
                     pointer-events: none;
                 `;
                 document.body.appendChild(particle);
 
-                const angle = (Math.PI * 2 * i) / 10;
-                const distance = Math.random() * 50 + 20;
+                const angle = (Math.PI * 2 * i) / particleCount + Math.random() * 0.5;
+                const distance = Math.random() * 80 + 30;
                 const tx = Math.cos(angle) * distance;
                 const ty = Math.sin(angle) * distance;
+                const duration = Math.random() * 400 + 400;
 
                 particle.animate([
                     { transform: 'translate(0, 0) scale(1)', opacity: 1 },
                     { transform: `translate(${tx}px, ${ty}px) scale(0)`, opacity: 0 }
                 ], {
-                    duration: 500,
+                    duration: duration,
                     easing: 'ease-out'
                 }).onfinish = () => particle.remove();
+            }
+
+            // 创建爆炸烟雾
+            for (let i = 0; i < 5; i++) {
+                const smoke = document.createElement('div');
+                const size = Math.random() * 30 + 20;
+                smoke.style.cssText = `
+                    position: fixed;
+                    width: ${size}px;
+                    height: ${size}px;
+                    background: radial-gradient(circle, rgba(100,100,100,0.6), transparent);
+                    border-radius: 50%;
+                    left: ${canvasRect.left + x - size/2 + Math.random() * 20 - 10}px;
+                    top: ${canvasRect.top + y - size/2 + Math.random() * 20 - 10}px;
+                    z-index: 99;
+                    pointer-events: none;
+                `;
+                document.body.appendChild(smoke);
+                smoke.animate([
+                    { transform: 'scale(0.5)', opacity: 0.8 },
+                    { transform: `scale(${Math.random() + 1.5})`, opacity: 0 }
+                ], {
+                    duration: Math.random() * 500 + 500,
+                    easing: 'ease-out'
+                }).onfinish = () => smoke.remove();
+            }
+        }
+
+        function createCatchEffect(x, y, emoji) {
+            const canvasRect = canvas.getBoundingClientRect();
+
+            // 创建得分文字
+            const scoreText = document.createElement('div');
+            scoreText.style.cssText = `
+                position: fixed;
+                font-size: 20px;
+                font-weight: bold;
+                color: #ffd700;
+                text-shadow: 0 0 10px rgba(255,215,0,0.8);
+                left: ${canvasRect.left + x}px;
+                top: ${canvasRect.top + y}px;
+                z-index: 100;
+                pointer-events: none;
+            `;
+            scoreText.textContent = '+1';
+            document.body.appendChild(scoreText);
+            scoreText.animate([
+                { transform: 'translateY(0) scale(1)', opacity: 1 },
+                { transform: 'translateY(-40px) scale(1.5)', opacity: 0 }
+            ], { duration: 600, easing: 'ease-out' }).onfinish = () => scoreText.remove();
+
+            // 创建小星星特效
+            for (let i = 0; i < 5; i++) {
+                const star = document.createElement('div');
+                star.style.cssText = `
+                    position: fixed;
+                    font-size: 12px;
+                    left: ${canvasRect.left + x + Math.random() * 20 - 10}px;
+                    top: ${canvasRect.top + y + Math.random() * 20 - 10}px;
+                    z-index: 100;
+                    pointer-events: none;
+                `;
+                star.textContent = '✨';
+                document.body.appendChild(star);
+                const angle = Math.random() * Math.PI * 2;
+                const distance = Math.random() * 30 + 10;
+                star.animate([
+                    { transform: 'translate(0, 0) scale(1)', opacity: 1 },
+                    { transform: `translate(${Math.cos(angle)*distance}px, ${Math.sin(angle)*distance}px) scale(0)`, opacity: 0 }
+                ], { duration: 400, easing: 'ease-out' }).onfinish = () => star.remove();
             }
         }
 
