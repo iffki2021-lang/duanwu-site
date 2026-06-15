@@ -974,7 +974,7 @@
                     <div class="game-overlay-text">点击开始游戏</div>
                 </div>
             </div>
-            <div class="game-score">得分：<span id="gameScore">0</span></div>
+            <div class="game-score">得分：<span id="gameScore">0</span> | 时间：<span id="gameTime">60</span>s</div>
             <button class="game-btn" onclick="startGame()">开始游戏</button>
         </div>
     </div>
@@ -1417,30 +1417,45 @@
         const ctx = canvas.getContext('2d');
         let gameRunning = false;
         let gameScore = 0;
+        let gameTime = 60; // 60秒
         let gameAnimationId;
-        let player, zongzis;
+        let gameTimer;
+        let player, zongzis, bombs;
 
         function initGame() {
             player = {
-                x: canvas.width / 2 - 40,
-                y: canvas.height - 60,
-                width: 80,
-                height: 40,
+                x: canvas.width / 2 - 50,
+                y: canvas.height - 70,
+                width: 100,
+                height: 50,
                 speed: 8
             };
             zongzis = [];
+            bombs = [];
             gameScore = 0;
+            gameTime = 60;
             document.getElementById('gameScore').textContent = '0';
+            document.getElementById('gameTime').textContent = '60';
         }
 
         function createZongzi() {
             const emojis = ['🫔', '🍃', '🎋'];
             zongzis.push({
-                x: Math.random() * (canvas.width - 30),
-                y: -30,
-                size: 30,
-                speed: Math.random() * 2 + 2,
+                x: Math.random() * (canvas.width - 45),
+                y: -45,
+                size: 45,
+                speed: Math.random() * 1.5 + 1,
                 emoji: emojis[Math.floor(Math.random() * emojis.length)]
+            });
+        }
+
+        function createBomb() {
+            bombs.push({
+                x: Math.random() * (canvas.width - 40),
+                y: -40,
+                size: 40,
+                speed: Math.random() * 1 + 1.5,
+                emoji: '💣'
             });
         }
 
@@ -1458,16 +1473,16 @@
             // 画玩家（盘子）
             ctx.fillStyle = '#ffd700';
             ctx.beginPath();
-            ctx.roundRect(player.x, player.y, player.width, player.height, 10);
+            ctx.roundRect(player.x, player.y, player.width, player.height, 12);
             ctx.fill();
             ctx.fillStyle = '#b8860b';
             ctx.beginPath();
-            ctx.roundRect(player.x + 5, player.y + 5, player.width - 10, player.height - 10, 8);
+            ctx.roundRect(player.x + 6, player.y + 6, player.width - 12, player.height - 12, 10);
             ctx.fill();
             ctx.fillStyle = '#ffd700';
-            ctx.font = '20px serif';
+            ctx.font = '24px serif';
             ctx.textAlign = 'center';
-            ctx.fillText('🧺', player.x + player.width / 2, player.y + 28);
+            ctx.fillText('🧺', player.x + player.width / 2, player.y + 35);
 
             // 画粽子
             zongzis.forEach(z => {
@@ -1475,11 +1490,19 @@
                 ctx.fillText(z.emoji, z.x + z.size / 2, z.y + z.size / 2);
             });
 
-            // 画分数
+            // 画炸弹
+            bombs.forEach(b => {
+                ctx.font = `${b.size}px serif`;
+                ctx.fillText(b.emoji, b.x + b.size / 2, b.y + b.size / 2);
+            });
+
+            // 画分数和时间
             ctx.fillStyle = '#ffd700';
             ctx.font = 'bold 20px Microsoft YaHei';
             ctx.textAlign = 'left';
             ctx.fillText(`得分: ${gameScore}`, 10, 30);
+            ctx.textAlign = 'right';
+            ctx.fillText(`时间: ${gameTime}s`, canvas.width - 10, 30);
         }
 
         function updateGame() {
@@ -1502,9 +1525,67 @@
                 }
             });
 
-            // 随机生成粽子
-            if (Math.random() < 0.03) {
+            // 移动炸弹
+            bombs.forEach((b, index) => {
+                b.y += b.speed;
+
+                // 检测碰撞
+                if (b.y + b.size > player.y &&
+                    b.x + b.size > player.x &&
+                    b.x < player.x + player.width) {
+                    gameScore = Math.max(0, gameScore - 1);
+                    document.getElementById('gameScore').textContent = gameScore;
+                    bombs.splice(index, 1);
+                    // 炸弹爆炸效果
+                    createExplosion(b.x + b.size / 2, b.y + b.size / 2);
+                }
+
+                // 超出屏幕
+                if (b.y > canvas.height) {
+                    bombs.splice(index, 1);
+                }
+            });
+
+            // 随机生成粽子（概率降低）
+            if (Math.random() < 0.025) {
                 createZongzi();
+            }
+
+            // 随机生成炸弹（概率很低）
+            if (Math.random() < 0.005) {
+                createBomb();
+            }
+        }
+
+        function createExplosion(x, y) {
+            // 简单的爆炸粒子效果
+            for (let i = 0; i < 10; i++) {
+                const particle = document.createElement('div');
+                particle.style.cssText = `
+                    position: fixed;
+                    width: 8px;
+                    height: 8px;
+                    background: #ff4444;
+                    border-radius: 50%;
+                    left: ${canvas.getBoundingClientRect().left + x}px;
+                    top: ${canvas.getBoundingClientRect().top + y}px;
+                    z-index: 100;
+                    pointer-events: none;
+                `;
+                document.body.appendChild(particle);
+
+                const angle = (Math.PI * 2 * i) / 10;
+                const distance = Math.random() * 50 + 20;
+                const tx = Math.cos(angle) * distance;
+                const ty = Math.sin(angle) * distance;
+
+                particle.animate([
+                    { transform: 'translate(0, 0) scale(1)', opacity: 1 },
+                    { transform: `translate(${tx}px, ${ty}px) scale(0)`, opacity: 0 }
+                ], {
+                    duration: 500,
+                    easing: 'ease-out'
+                }).onfinish = () => particle.remove();
             }
         }
 
@@ -1521,6 +1602,32 @@
             document.getElementById('gameOverlay').style.display = 'none';
             initGame();
             gameLoop();
+
+            // 倒计时
+            gameTimer = setInterval(() => {
+                gameTime--;
+                document.getElementById('gameTime').textContent = gameTime;
+                if (gameTime <= 0) {
+                    endGame();
+                }
+            }, 1000);
+        }
+
+        function endGame() {
+            gameRunning = false;
+            clearInterval(gameTimer);
+            cancelAnimationFrame(gameAnimationId);
+
+            // 显示游戏结束
+            const overlay = document.getElementById('gameOverlay');
+            overlay.style.display = 'flex';
+            overlay.innerHTML = `
+                <div style="text-align: center;">
+                    <div style="font-size: 32px; color: #ffd700; margin-bottom: 15px;">游戏结束！</div>
+                    <div style="font-size: 24px; color: #fff; margin-bottom: 20px;">最终得分: ${gameScore}</div>
+                    <div style="font-size: 18px; color: #4ecdc4;">点击重新开始</div>
+                </div>
+            `;
         }
 
         // 键盘控制
@@ -1565,8 +1672,12 @@
             }
         }, 16);
 
-        // 点击画布开始游戏
+        // 点击画布开始/重新开始游戏
         canvas.addEventListener('click', () => {
+            if (!gameRunning) startGame();
+        });
+
+        document.getElementById('gameOverlay').addEventListener('click', () => {
             if (!gameRunning) startGame();
         });
     </script>
