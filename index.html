@@ -1029,7 +1029,6 @@
 
             // 增加访问计数
             globalData.visitors = (globalData.visitors || 0) + 1;
-            document.getElementById('visitorCount').textContent = globalData.visitors;
 
             // 保存更新后的访问计数
             await saveToGist();
