@@ -1014,14 +1014,19 @@
 
         // ==================== 从 GitHub Gist 加载数据 ====================
         async function loadFromGist() {
-            const response = await fetch(`https://api.github.com/gists/${GITHUB_CONFIG.gistId}`, {
+            const url = `https://api.github.com/gists/${GITHUB_CONFIG.gistId}`;
+            const token = GITHUB_CONFIG.token;
+            console.log('Token长度:', token.length);
+            
+            const response = await fetch(url, {
                 headers: {
-                    'Authorization': `token ${GITHUB_CONFIG.token}`
+                    'Authorization': `token ${token}`
                 }
             });
 
             if (!response.ok) {
-                throw new Error('Failed to load from Gist');
+                const errorText = await response.text();
+                throw new Error(`HTTP ${response.status}: ${errorText.substring(0, 100)}`);
             }
 
             const gist = await response.json();
