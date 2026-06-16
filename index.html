@@ -1007,6 +1007,7 @@
                 console.log('使用 GitHub Gist 存储模式');
             } catch (error) {
                 console.log('GitHub Gist 加载失败，使用本地存储', error);
+                document.body.insertAdjacentHTML('afterbegin', '<div style="background:#ff4444;color:white;padding:10px;text-align:center;font-size:14px;">⚠️ 云端加载失败：' + error.message + '</div>');
                 initLocalStorage();
             }
         }
@@ -1079,6 +1080,7 @@
                 return true;
             } catch (error) {
                 console.error('保存失败:', error);
+                window.lastError = error.message;
                 // 降级到本地存储
                 try {
                     let answers = JSON.parse(localStorage.getItem(STORAGE_KEYS.answers) || '[]');
@@ -1121,7 +1123,7 @@
             if (success) {
                 showResult();
             } else {
-                alert('提交失败，请重试');
+                alert('提交失败: ' + (window.lastError || '未知错误'));
                 submitBtn.disabled = false;
                 submitBtn.textContent = '提交回答 ✨';
             }
