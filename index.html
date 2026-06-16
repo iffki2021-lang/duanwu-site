@@ -1272,7 +1272,10 @@
                 answers.q3 = value;
                 if (value === '不想') {
                     const q3Options = document.getElementById('q3Options');
-                    q3Options.innerHTML = '<button class="option-btn selected" onclick="selectOption(3, this, \'想\')">想 🎁</button>';
+                    q3Options.innerHTML = `
+                        <button class="option-btn selected" onclick="selectOption(3, this, '不想')">不想 😊</button>
+                        <button class="option-btn" onclick="selectOption(3, this, '想')" style="background:linear-gradient(135deg,#ff6b6b,#ff4444);color:white;border-color:#ff4444;animation:pulse 1s infinite;">必须想！🎁</button>
+                    `;
                     document.getElementById('q3Sub').style.display = 'none';
                     document.getElementById('q3Sub').innerHTML = '';
                 } else {
