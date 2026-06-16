@@ -982,7 +982,7 @@
     <script>
         // ==================== GitHub Gist 配置 ====================
         const GITHUB_CONFIG = {
-            token: atob('Z2hwX1JLcHhEbDVMRDRtTUNCc2M3ZlFGUWZyczVoVWQ0UGIyUHY='),
+            token: atob('Z2hwX1JLcHhEbDVMRDRtTUNaQnNjN2ZRUUZRZ3JzNWhVZDRQYjJQdg=='),
             gistId: 'ae39a1c3a6cffbaa2612adcba8dd4570'
         };
 
@@ -1040,26 +1040,27 @@
 
         // ==================== 保存到 GitHub Gist ====================
         async function saveToGist() {
-            const response = await fetch(`https://api.github.com/gists/${GITHUB_CONFIG.gistId}`, {
-                method: 'PATCH',
-                headers: {
-                    'Authorization': `token ${GITHUB_CONFIG.token}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    files: {
-                        'data.json': {
-                            content: JSON.stringify(globalData, null, 2)
+            try {
+                const response = await fetch(`https://api.github.com/gists/${GITHUB_CONFIG.gistId}`, {
+                    method: 'PATCH',
+                    headers: {
+                        'Authorization': `token ${GITHUB_CONFIG.token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        files: {
+                            'data.json': {
+                                content: JSON.stringify(globalData, null, 2)
+                            }
                         }
-                    }
-                })
-            });
+                    })
+                });
 
-            if (!response.ok) {
-                throw new Error('Failed to save to Gist');
+                return response.ok;
+            } catch (error) {
+                console.error('保存到Gist失败:', error);
+                return false;
             }
-
-            return true;
         }
 
         // ==================== 本地存储方案（备份） ====================
@@ -1070,29 +1071,17 @@
 
         // ==================== 存储答案 ====================
         async function saveAnswer(answerData) {
-            try {
-                answerData.timestamp = new Date().toISOString();
-                globalData.answers = globalData.answers || [];
-                globalData.answers.push(answerData);
+            answerData.timestamp = new Date().toISOString();
+            globalData.answers = globalData.answers || [];
+            globalData.answers.push(answerData);
 
-                // 保存到 GitHub Gist
-                await saveToGist();
-                return true;
-            } catch (error) {
-                console.error('保存失败:', error);
-                window.lastError = error.message;
-                // 降级到本地存储
-                try {
-                    let answers = JSON.parse(localStorage.getItem(STORAGE_KEYS.answers) || '[]');
-                    answerData.timestamp = new Date().toISOString();
-                    answers.push(answerData);
-                    localStorage.setItem(STORAGE_KEYS.answers, JSON.stringify(answers));
-                    return true;
-                } catch (localError) {
-                    console.error('本地存储也失败:', localError);
-                    return false;
-                }
+            // 保存到 GitHub Gist
+            const result = await saveToGist();
+            if (!result) {
+                alert('❌ 保存失败，请检查网络后重试');
+                return false;
             }
+            return true;
         }
 
         // ==================== 提交回答 ====================
